@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Control Consumo Aromas</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; position: relative; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .connection-status { position: absolute; top: 20px; right: 20px; padding: 8px 15px; border-radius: 20px; font-size: 0.9em; font-weight: bold; }
+        .status-connected { background: #28a745; color: white; }
+        .status-disconnected { background: #dc3545; color: white; }
+        .tabs { display: flex; background: #f5f5f5; border-bottom: 3px solid #667eea; flex-wrap: wrap; }
+        .tab { flex: 1; min-width: 150px; padding: 20px; text-align: center; cursor: pointer; background: #e0e0e0; border: none; font-size: 1.1em; font-weight: bold; transition: all 0.3s; }
+        .tab:hover { background: #d0d0d0; }
+        .tab.active { background: white; color: #667eea; }
+        .content { padding: 30px; }
+        .panel { display: none; }
+        .panel.active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: bold; margin-bottom: 8px; color: #333; }
+        .form-group input, .form-group select, .form-group textarea { padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; transition: border-color 0.3s; font-family: inherit; }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
+        .btn { padding: 15px 30px; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: all 0.3s; margin: 10px; display: inline-block; text-decoration: none; text-align: center; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover:not(:disabled) { background: #218838; transform: translateY(-2px); }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover:not(:disabled) { background: #c82333; transform: translateY(-2px); }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-info:hover:not(:disabled) { background: #138496; transform: translateY(-2px); }
+        .btn-sm { padding: 8px 15px; font-size: 0.9em; margin: 5px; }
+        .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+        .aroma-card { border-radius: 15px; padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: transform 0.3s; }
+        .aroma-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+        .aroma-card h3 { margin-bottom: 10px; font-size: 1.2em; }
+        .aroma-card .code { color: #666; font-size: 0.9em; margin-bottom: 15px; }
+        .stock-bar { background: #e0e0e0; height: 30px; border-radius: 15px; overflow: hidden; margin: 15px 0; position: relative; }
+        .stock-fill { height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; transition: all 0.5s; }
+        .stock-text { position: relative; z-index: 1; }
+        .level-high { background: linear-gradient(90deg, #28a745 0%, #20c997 100%); }
+        .level-medium { background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%); }
+        .level-low { background: linear-gradient(90deg, #ff5722 0%, #dc3545 100%); }
+        .level-critical { background: linear-gradient(90deg, #dc3545 0%, #8b0000 100%); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        table th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; text-align: left; font-size: 0.9em; }
+        table td { padding: 12px 15px; border-bottom: 1px solid #ddd; font-size: 0.9em; }
+        table tr:hover { background: #f5f5f5; }
+        .status-badge { padding: 5px 15px; border-radius: 20px; font-size: 0.85em; font-weight: bold; display: inline-block; }
+        .status-pending { background: #ffc107; color: #000; }
+        .status-completed { background: #28a745; color: white; }
+        .alert { padding: 15px; border-radius: 8px; margin: 20px 0; display: none; }
+        .alert.show { display: block; animation: slideIn 0.5s; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        .alert-success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+        .alert-danger { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+        .alert-warning { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border-left: 4px solid #17a2b8; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinner-container { text-align: center; padding: 40px; color: #667eea; }
+        .empty-state { text-align: center; padding: 40px; color: #666; }
+        .empty-state-icon { font-size: 3em; margin-bottom: 20px; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: white; margin: 5% auto; padding: 30px; border-radius: 15px; width: 80%; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 20px; }
+        .close:hover { color: #000; }
+        .stock-info { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .stock-info-item { display: flex; justify-content: space-between; margin: 8px 0; }
+        .stock-info-label { font-weight: bold; color: #666; }
+        .stock-info-value { color: #333; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="connection-status" id="connectionStatus">🟢 Conectado</div>
+            <h1>🌸 Sistema de Control de Consumo de Aromas</h1>
+            <p>Gestión de Inventario y Producción</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('bodega')">📦 BODEGA</button>
+            <button class="tab" onclick="showTab('administracion')">💼 ADMINISTRACIÓN</button>
+            <button class="tab" onclick="showTab('inventario')">📊 INVENTARIO</button>
+        </div>
+
+        <div class="content">
+            <!-- PANEL BODEGA -->
+            <div id="bodega" class="panel active">
+                <h2>📦 Registro de Consumo - Bodega</h2>
+                <div id="alertBodega" class="alert"></div>
+                
+                <form id="formBodega" onsubmit="registrarConsumo(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Aroma *</label>
+                            <select id="aromaSelect" required onchange="mostrarStockDisponible()">
+                                <option value="">Seleccionar aroma...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Cantidad de Litros Consumidos *</label>
+                            <input type="number" id="cantidadLitros" step="0.1" min="0.1" required onchange="validarStock()">
+                            <small id="stockWarning" style="color: #dc3545; margin-top: 5px; display: none;"></small>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha del Consumo *</label>
+                            <input type="date" id="fechaConsumo" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Responsable Bodega *</label>
+                            <input type="text" id="responsableBodega" placeholder="Nombre del operario" required>
+                        </div>
+                    </div>
+                    
+                    <div id="stockDisplay" class="stock-info" style="display: none;">
+                        <h4 style="margin-bottom: 10px; color: #667eea;">📊 Stock Disponible</h4>
+                        <div class="stock-info-item">
+                            <span class="stock-info-label">Stock Actual:</span>
+                            <span class="stock-info-value" id="stockActual">-</span>
+                        </div>
+                        <div class="stock-info-item">
+                            <span class="stock-info-label">Después del consumo:</span>
+                            <span class="stock-info-value" id="stockDespues">-</span>
+                        </div>
+                        <div class="stock-info-item">
+                            <span class="stock-info-label">Barriles equivalentes:</span>
+                            <span class="stock-info-value" id="barrilesEquiv">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Observaciones</label>
+                        <textarea id="observaciones" placeholder="Notas adicionales (opcional)"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="btnRegistrar">✅ Registrar Consumo</button>
+                    <button type="button" class="btn btn-danger" onclick="limpiarFormulario()">🔄 Limpiar</button>
+                </form>
+
+                <h3 style="margin-top: 40px;">📋 Últimos 10 Consumos Registrados</h3>
+                <button class="btn btn-info" onclick="cargarUltimosConsumos()">🔄 Actualizar Lista</button>
+                <div id="listaConsumos"></div>
+            </div>
+
+            <!-- PANEL ADMINISTRACIÓN -->
+            <div id="administracion" class="panel">
+                <h2>💼 Completar Información - Administración</h2>
+                <div id="alertAdmin" class="alert"></div>
+                
+                <h3>⏳ Consumos Pendientes de Cargar a Bsale</h3>
+                <button class="btn btn-info" onclick="cargarConsumosPendientes()">🔄 Actualizar Pendientes</button>
+                <div id="consumosPendientes"></div>
+            </div>
+
+            <!-- PANEL INVENTARIO -->
+            <div id="inventario" class="panel">
+                <h2>📊 Estado del Inventario</h2>
+                <div id="alertInventario" class="alert"></div>
+                <button class="btn btn-success" onclick="cargarInventarioDesdeSheet()">🔄 Actualizar Inventario</button>
+                <a href="https://docs.google.com/spreadsheets/d/1gZznAkADAJdnWpv8zL98k-QBo_pwasPyi-SrdiokLcY/edit" target="_blank" class="btn btn-primary">📊 Ver en Google Sheets</a>
+                
+                <div style="margin: 20px 0; padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #2196F3;">
+                    <h4 style="color: #667eea; margin-bottom: 10px;">📌 Información</h4>
+                    <p><strong>🟢 Verde:</strong> Stock saludable (más del 50%)</p>
+                    <p><strong>🟡 Amarillo:</strong> Stock medio (25% - 50%)</p>
+                    <p><strong>🟠 Naranja:</strong> Stock bajo (10% - 25%)</p>
+                    <p><strong>🔴 Rojo (Pulsante):</strong> Stock crítico (menos del 10%)</p>
+                </div>
+                
+                <div id="inventarioGrid" class="inventory-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Completar Admin -->
+    <div id="modalAdmin" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModalAdmin()">&times;</span>
+            <h2 style="color: #667eea; margin-bottom: 20px;">💼 Marcar como Completado</h2>
+            <div id="contenidoModalAdmin"></div>
+        </div>
+    </div>
+
+    <script>
+        const BARRIL_LITROS = 200;
+        const STOCK_INICIAL = 200;
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxmrUvCU3TX8P1Lu8b3TG7oTuD387K3fNqZtZMLKmKt0e9Kk75ooTawETiDa7ORBtv8/exec';
+        
+        const AROMAS_BASE = [
+            {nombre: "APPLE JACK (Manzana Canela)", codigo: "FC12001"},
+            {nombre: "BUBBLE GUM (Chicle)", codigo: "FC12010"},
+            {nombre: "CHERRY (Cereza)", codigo: "FC12002"},
+            {nombre: "GRAPE BURST (Uva)", codigo: "FC12011"},
+            {nombre: "RASPBERRY (Frambuesa)", codigo: "FC12012"},
+            {nombre: "TROPICAL FRUIT (Frutas Tropicales)", codigo: "FC12014"},
+            {nombre: "VANILLA MIST", codigo: "FC12018"},
+            {nombre: "VERRI BERRY (Frutos Rojos)", codigo: "FC12013"},
+            {nombre: "WOODLAND (Bosque)", codigo: "FC12019"},
+            {nombre: "CRANBERRY (Arandanos)", codigo: "FC12003"},
+            {nombre: "MANGO", codigo: "FC12005"},
+            {nombre: "SWEET BERRY (Bayas Dulces)", codigo: "FC12017"},
+            {nombre: "AQUALINA BEACH", codigo: "AQ001"},
+            {nombre: "VILLA CAPRI", codigo: "VC001"},
+            {nombre: "DELANO BEACH", codigo: "DB001"},
+            {nombre: "VANILLA AMBER", codigo: "VA001"},
+            {nombre: "WHITE TEA CEDAR", codigo: "WTC001"}
+        ];
+
+        let inventario = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarAromasEnSelect();
+            document.getElementById('fechaConsumo').valueAsDate = new Date();
+            cargarInventarioDesdeSheet();
+            cargarUltimosConsumos();
+        });
+
+        function cargarAromasEnSelect() {
+            const select = document.getElementById('aromaSelect');
+            AROMAS_BASE.forEach(aroma => {
+                const option = document.createElement('option');
+                option.value = aroma.codigo;
+                option.textContent = `${aroma.nombre} (${aroma.codigo})`;
+                select.appendChild(option);
+            });
+        }
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'inventario') {
+                cargarInventarioDesdeSheet();
+            } else if (tabName === 'administracion') {
+                cargarConsumosPendientes();
+            } else if (tabName === 'bodega') {
+                cargarUltimosConsumos();
+            }
+        }
+
+        function mostrarStockDisponible() {
+            const aromaSeleccionado = document.getElementById('aromaSelect').value;
+            const cantidadInput = document.getElementById('cantidadLitros');
+            
+            if (!aromaSeleccionado) {
+                document.getElementById('stockDisplay').style.display = 'none';
+                return;
+            }
+            
+            const aroma = inventario.find(a => a.codigo === aromaSeleccionado);
+            if (!aroma) return;
+            
+            document.getElementById('stockDisplay').style.display = 'block';
+            document.getElementById('stockActual').textContent = `${aroma.stock.toFixed(1)} L`;
+            
+            if (cantidadInput.value) {
+                validarStock();
+            }
+        }
+
+        function validarStock() {
+            const aromaSeleccionado = document.getElementById('aromaSelect').value;
+            const cantidad = parseFloat(document.getElementById('cantidadLitros').value) || 0;
+            const warning = document.getElementById('stockWarning');
+            const btnRegistrar = document.getElementById('btnRegistrar');
+            
+            if (!aromaSeleccionado || cantidad <= 0) {
+                warning.style.display = 'none';
+                document.getElementById('stockDespues').textContent = '-';
+                document.getElementById('barrilesEquiv').textContent = '-';
+                return;
+            }
+            
+            const aroma = inventario.find(a => a.codigo === aromaSeleccionado);
+            if (!aroma) return;
+            
+            const stockDespues = aroma.stock - cantidad;
+            const barriles = (cantidad / BARRIL_LITROS).toFixed(2);
+            
+            document.getElementById('stockDespues').textContent = `${stockDespues.toFixed(1)} L`;
+            document.getElementById('barrilesEquiv').textContent = `${barriles} barriles`;
+            
+            if (cantidad > aroma.stock) {
+                warning.textContent = `⚠️ Stock insuficiente. Solo hay ${aroma.stock.toFixed(1)}L disponibles`;
+                warning.style.display = 'block';
+                btnRegistrar.disabled = true;
+            } else if (stockDespues < 20) {
+                warning.textContent = `⚠️ Advertencia: El stock quedará muy bajo (${stockDespues.toFixed(1)}L)`;
+                warning.style.display = 'block';
+                warning.style.color = '#ff9800';
+                btnRegistrar.disabled = false;
+            } else {
+                warning.style.display = 'none';
+                btnRegistrar.disabled = false;
+            }
+        }
+
+        async function registrarConsumo(event) {
+            event.preventDefault();
+            
+            const aromaSeleccionado = document.getElementById('aromaSelect').value;
+            const aroma = AROMAS_BASE.find(a => a.codigo === aromaSeleccionado);
+            const aromaInventario = inventario.find(a => a.codigo === aromaSeleccionado);
+            
+            const cantidadLitros = parseFloat(document.getElementById('cantidadLitros').value);
+            const fechaConsumo = document.getElementById('fechaConsumo').value;
+            const responsableBodega = document.getElementById('responsableBodega').value;
+            const observaciones = document.getElementById('observaciones').value;
+            
+            if (!aromaInventario || cantidadLitros > aromaInventario.stock) {
+                mostrarAlerta('alertBodega', 'danger', `❌ Error: Stock insuficiente`);
+                return;
+            }
+            
+            const barrilesUsados = (cantidadLitros / BARRIL_LITROS).toFixed(2);
+            const id = Date.now();
+            
+            const btnRegistrar = document.getElementById('btnRegistrar');
+            btnRegistrar.disabled = true;
+            btnRegistrar.innerHTML = '⏳ Registrando... <span class="loading"></span>';
+            
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'addConsumo',
+                        id: id,
+                        fecha: fechaConsumo,
+                        aroma: aroma.nombre,
+                        codigo: aroma.codigo,
+                        litros: cantidadLitros,
+                        barriles: barrilesUsados,
+                        responsableBodega: responsableBodega,
+                        observaciones: observaciones,
+                        estado: 'Pendiente'
+                    })
+                });
+                
+                mostrarAlerta('alertBodega', 'success', `✅ Consumo registrado! Espera 3 segundos y actualiza`);
+                limpiarFormulario();
+                document.getElementById('fechaConsumo').valueAsDate = new Date();
+                
+                setTimeout(() => {
+                    cargarInventarioDesdeSheet();
+                    cargarUltimosConsumos();
+                }, 3000);
+                
+            } catch (error) {
+                mostrarAlerta('alertBodega', 'danger', '❌ Error: ' + error.message);
+            } finally {
+                btnRegistrar.disabled = false;
+                btnRegistrar.innerHTML = '✅ Registrar Consumo';
+            }
+        }
+
+        async function cargarUltimosConsumos() {
+            const container = document.getElementById('listaConsumos');
+            container.innerHTML = '<div class="spinner-container"><div class="loading" style="width:40px;height:40px;"></div><p>Cargando desde Google Sheets...</p></div>';
+            
+            try {
+                const response = await fetch(SCRIPT_URL + '?action=getConsumos&limit=10');
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    let html = '<table><thead><tr><th>ID</th><th>Fecha</th><th>Aroma</th><th>Litros</th><th>Barriles</th><th>Responsable</th><th>Estado</th></tr></thead><tbody>';
+                    
+                    data.data.forEach(c => {
+                        html += `<tr>
+                            <td><strong>#${c.id.toString().substring(c.id.toString().length - 6)}</strong></td>
+                            <td>${c.fecha}</td>
+                            <td>${c.aroma}<br><small style="color:#666;">${c.codigo}</small></td>
+                            <td>${c.litros} L</td>
+                            <td>${c.barriles}</td>
+                            <td>${c.responsableBodega}</td>
+                            <td><span class="status-badge status-${c.estado === 'Pendiente' ? 'pending' : 'completed'}">${c.estado}</span></td>
+                        </tr>`;
+                    });
+                    
+                    html += '</tbody></table>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No hay consumos registrados</p></div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Error al cargar. Verifica conexión.</p></div>';
+            }
+        }
+
+        async function cargarConsumosPendientes() {
+            const container = document.getElementById('consumosPendientes');
+            container.innerHTML = '<div class="spinner-container"><div class="loading" style="width:40px;height:40px;"></div><p>Cargando pendientes...</p></div>';
+            
+            try {
+                const response = await fetch(SCRIPT_URL + '?action=getPendientes');
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    let html = '<table><thead><tr><th>ID</th><th>Fecha</th><th>Aroma</th><th>Litros</th><th>Responsable</th><th>Acción</th></tr></thead><tbody>';
+                    
+                    data.data.forEach(c => {
+                        html += `<tr>
+                            <td><strong>#${c.id.toString().substring(c.id.toString().length - 6)}</strong></td>
+                            <td>${c.fecha}</td>
+                            <td>${c.aroma}<br><small style="color:#666;">${c.codigo}</small></td>
+                            <td>${c.litros} L</td>
+                            <td>${c.responsableBodega}</td>
+                            <td><button class="btn btn-success btn-sm" onclick="abrirModalCompletar('${c.id}', '${c.aroma}', ${c.litros})">✅ Completar</button></td>
+                        </tr>`;
+                    });
+                    
+                    html += '</tbody></table>';
+                    html += `<p style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px;"><strong>💡 Total:</strong> ${data.data.length} pendiente(s)</p>`;
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><p>No hay pendientes</p></div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Error al cargar</p></div>';
+            }
+        }
+
+        function abrirModalCompletar(id, aroma, litros) {
+            const contenido = `
+                <form id="formCompletarAdmin" onsubmit="marcarComoCompletado(event, '${id}')">
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                        <p><strong>ID:</strong> #${id.toString().substring(id.toString().length - 6)}</p>
+                        <p><strong>Aroma:</strong> ${aroma}</p>
+                        <p><strong>Litros:</strong> ${litros} L</p>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>Responsable Administración *</label>
+                        <input type="text" id="responsableAdmin" required placeholder="Tu nombre">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>Fecha de Carga a Bsale *</label>
+                        <input type="date" id="fechaCargaBsale" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">✅ Marcar como Completado</button>
+                    <button type="button" class="btn btn-danger" onclick="cerrarModalAdmin()">Cancelar</button>
+                </form>
+            `;
+            
+            document.getElementById('contenidoModalAdmin').innerHTML = contenido;
+            document.getElementById('modalAdmin').style.display = 'block';
+            document.getElementById('fechaCargaBsale').valueAsDate = new Date();
+        }
+
+        async function marcarComoCompletado(event, id) {
+            event.preventDefault();
+            
+            const responsableAdmin = document.getElementById('responsableAdmin').value;
+            const fechaCargaBsale = document.getElementById('fechaCargaBsale').value;
+            
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'updateConsumo',
+                        id: id,
+                        responsableAdmin: responsableAdmin,
+                        fechaCargaBsale: fechaCargaBsale
+                    })
+                });
+                
+                cerrarModalAdmin();
+                mostrarAlerta('alertAdmin', 'success', '✅ Completado! Espera 3 segundos y actualiza');
+                
+                setTimeout(() => {
+                    cargarConsumosPendientes();
+                }, 3000);
+                
+            } catch (error) {
+                mostrarAlerta('alertAdmin', 'danger', '❌ Error: ' + error.message);
+            }
+        }
+
+        function cerrarModalAdmin() {
+            document.getElementById('modalAdmin').style.display = 'none';
+        }
+
+        async function cargarInventarioDesdeSheet() {
+            const container = document.getElementById('inventarioGrid');
+            container.innerHTML = '<div class="spinner-container"><div class="loading" style="width:40px;height:40px;"></div><p>Cargando inventario desde Google Sheets...</p></div>';
+            
+            try {
+                const response = await fetch(SCRIPT_URL + '?action=getInventario');
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    inventario = data.data;
+                    mostrarInventario();
+                    mostrarAlerta('alertInventario', 'success', '✅ Inventario actualizado desde Google Sheets');
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Error al cargar inventario</p></div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Error de conexión</p></div>';
+            }
+        }
+
+        function mostrarInventario() {
+            const container = document.getElementById('inventarioGrid');
+            container.innerHTML = '';
+            
+            if (inventario.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><p>No hay datos de inventario</p></div>';
+                return;
+            }
+            
+            inventario.forEach(aroma => {
+                const porcentaje = (aroma.stock / STOCK_INICIAL) * 100;
+                let nivelClass = '';
+                let nivelTexto = '';
+                let colorFondo = '';
+                
+                if (porcentaje > 50) {
+                    nivelClass = 'level-high';
+                    nivelTexto = '🟢 Stock Saludable';
+                    colorFondo = 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)';
+                } else if (porcentaje > 25) {
+                    nivelClass = 'level-medium';
+                    nivelTexto = '🟡 Stock Medio';
+                    colorFondo = 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)';
+                } else if (porcentaje > 10) {
+                    nivelClass = 'level-low';
+                    nivelTexto = '🟠 Stock Bajo';
+                    colorFondo = 'linear-gradient(135deg, #fbe9e7 0%, #ffccbc 100%)';
+                } else {
+                    nivelClass = 'level-critical';
+                    nivelTexto = '🔴 Stock Crítico';
+                    colorFondo = 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)';
+                }
+                
+                const card = document.createElement('div');
+                card.className = 'aroma-card';
+                card.style.background = colorFondo;
+                
+                card.innerHTML = `
+                    <h3 style="color: ${porcentaje > 10 ? '#667eea' : '#d32f2f'};">${aroma.nombre}</h3>
+                    <div class="code">Código: ${aroma.codigo}</div>
+                    
+                    <div class="stock-bar">
+                        <div class="stock-fill ${nivelClass}" style="width: ${Math.max(porcentaje, 3)}%">
+                            <span class="stock-text">${aroma.stock.toFixed(1)}L</span>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 10px;">
+                        <strong>${nivelTexto}</strong>
+                    </div>
+                    
+                    <div class="stock-info" style="margin-top: 15px;">
+                        <div class="stock-info-item">
+                            <span class="stock-info-label">Stock inicial:</span>
+                            <span class="stock-info-value">${STOCK_INICIAL} L</span>
+                        </div>
+                        <div class="stock-info-item">
+                            <span class="stock-info-label">Stock actual:</span>
+                            <span class="stock-info-value">${aroma.stock.toFixed(1)} L</span>
+                        </div>
+                        <div class="stock-info-item">
+                            <span class="stock-info-label">Consumido:</span>
+                            <span class="stock-info-value">${(STOCK_INICIAL - aroma.stock).toFixed(1)} L</span>
+                        </div>
+                        <div class="stock-info-item">
+                            <span class="stock-info-label">Barriles restantes:</span>
+                            <span class="stock-info-value">${(aroma.stock / BARRIL_LITROS).toFixed(2)}</span>
+                        </div>
+                        <div class="stock-info-item">
+                            <span class="stock-info-label">Porcentaje:</span>
+                            <span class="stock-info-value">${porcentaje.toFixed(1)}%</span>
+                        </div>
+                    </div>
+                    
+                    <a href="https://docs.google.com/spreadsheets/d/1gZznAkADAJdnWpv8zL98k-QBo_pwasPyi-SrdiokLcY/edit#gid=${aroma.codigo}" 
+                       target="_blank" 
+                       class="btn btn-info btn-sm" 
+                       style="width: 100%; margin-top: 15px; text-decoration: none;">
+                        📊 Ver Hoja Individual
+                    </a>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function limpiarFormulario() {
+            document.getElementById('formBodega').reset();
+            document.getElementById('stockDisplay').style.display = 'none';
+            document.getElementById('stockWarning').style.display = 'none';
+            document.getElementById('btnRegistrar').disabled = false;
+        }
+
+        function mostrarAlerta(containerId, tipo, mensaje) {
+            const alert = document.getElementById(containerId);
+            alert.className = `alert alert-${tipo} show`;
+            alert.textContent = mensaje;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 7000);
+        }
+
+        // Cerrar modal al hacer clic fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('modalAdmin');
+            if (event.target === modal) {
+                cerrarModalAdmin();
+            }
+        }
+    </script>
+</body>
+</html>
