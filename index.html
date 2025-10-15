@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Control Consumo Aromas</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
@@ -37,6 +39,8 @@
         .btn-danger:hover:not(:disabled) { background: #c82333; transform: translateY(-2px); }
         .btn-info { background: #17a2b8; color: white; }
         .btn-info:hover:not(:disabled) { background: #138496; transform: translateY(-2px); }
+        .btn-warning { background: #ffc107; color: #000; }
+        .btn-warning:hover:not(:disabled) { background: #e0a800; transform: translateY(-2px); }
         .btn-sm { padding: 8px 15px; font-size: 0.9em; margin: 5px; }
         .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
         .aroma-card { border-radius: 15px; padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: transform 0.3s; }
@@ -51,11 +55,25 @@
         .level-low { background: linear-gradient(90deg, #ff5722 0%, #dc3545 100%); }
         .level-critical { background: linear-gradient(90deg, #dc3545 0%, #8b0000 100%); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        table th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; text-align: left; font-size: 0.9em; }
+        
+        /* SCROLL HORIZONTAL PARA TABLAS EN MÓVIL */
+        .table-wrapper { 
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        table { 
+            width: 100%; 
+            min-width: 600px; /* Asegura que la tabla tenga un ancho mínimo */
+            border-collapse: collapse; 
+        }
+        table th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; text-align: left; font-size: 0.9em; white-space: nowrap; }
         table td { padding: 12px 15px; border-bottom: 1px solid #ddd; font-size: 0.9em; }
         table tr:hover { background: #f5f5f5; }
-        .status-badge { padding: 5px 15px; border-radius: 20px; font-size: 0.85em; font-weight: bold; display: inline-block; }
+        .status-badge { padding: 5px 15px; border-radius: 20px; font-size: 0.85em; font-weight: bold; display: inline-block; white-space: nowrap; }
         .status-pending { background: #ffc107; color: #000; }
         .status-completed { background: #28a745; color: white; }
         .alert { padding: 15px; border-radius: 8px; margin: 20px 0; display: none; }
@@ -71,20 +89,30 @@
         .empty-state { text-align: center; padding: 40px; color: #666; }
         .empty-state-icon { font-size: 3em; margin-bottom: 20px; }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-        .modal-content { background-color: white; margin: 5% auto; padding: 30px; border-radius: 15px; width: 80%; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .modal-content { background-color: white; margin: 5% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-height: 85vh; overflow-y: auto; }
         .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 20px; }
         .close:hover { color: #000; }
         .stock-info { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; }
         .stock-info-item { display: flex; justify-content: space-between; margin: 8px 0; }
         .stock-info-label { font-weight: bold; color: #666; }
         .stock-info-value { color: #333; font-weight: bold; }
+        
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8em; }
+            .tab { font-size: 0.9em; padding: 15px 10px; }
+            .content { padding: 15px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .btn { padding: 12px 20px; font-size: 1em; width: 100%; margin: 5px 0; }
+            .inventory-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <div class="connection-status" id="connectionStatus">🟢 Conectado</div>
-            <h1>🌸 Sistema de Control de Consumo de Aromas</h1>
+            <h1>📋 Sistema de Control de Consumo de Aromas</h1>
             <p>Gestión de Inventario y Producción</p>
         </div>
 
@@ -150,7 +178,10 @@
 
                 <h3 style="margin-top: 40px;">📋 Últimos 10 Consumos Registrados</h3>
                 <button class="btn btn-info" onclick="cargarUltimosConsumos()">🔄 Actualizar Lista</button>
-                <div id="listaConsumos"></div>
+                
+                <div class="table-wrapper">
+                    <div id="listaConsumos"></div>
+                </div>
             </div>
 
             <!-- PANEL ADMINISTRACIÓN -->
@@ -160,7 +191,10 @@
                 
                 <h3>⏳ Consumos Pendientes de Cargar a Bsale</h3>
                 <button class="btn btn-info" onclick="cargarConsumosPendientes()">🔄 Actualizar Pendientes</button>
-                <div id="consumosPendientes"></div>
+                
+                <div class="table-wrapper">
+                    <div id="consumosPendientes"></div>
+                </div>
             </div>
 
             <!-- PANEL INVENTARIO -->
@@ -218,6 +252,8 @@
         ];
 
         let inventario = [];
+        let ultimoConsumoRegistrado = null;
+        let ultimoConsumoCompletado = null;
 
         document.addEventListener('DOMContentLoaded', function() {
             cargarAromasEnSelect();
@@ -328,6 +364,19 @@
             const barrilesUsados = (cantidadLitros / BARRIL_LITROS).toFixed(2);
             const id = Date.now();
             
+            // Guardar datos del consumo para el PDF
+            ultimoConsumoRegistrado = {
+                id: id,
+                fecha: fechaConsumo,
+                aroma: aroma.nombre,
+                codigo: aroma.codigo,
+                litros: cantidadLitros,
+                barriles: barrilesUsados,
+                responsableBodega: responsableBodega,
+                observaciones: observaciones,
+                estado: 'Pendiente'
+            };
+            
             const btnRegistrar = document.getElementById('btnRegistrar');
             btnRegistrar.disabled = true;
             btnRegistrar.innerHTML = '⏳ Registrando... <span class="loading"></span>';
@@ -351,7 +400,18 @@
                     })
                 });
                 
-                mostrarAlerta('alertBodega', 'success', `✅ Consumo registrado! Espera 3 segundos y actualiza`);
+                mostrarAlerta('alertBodega', 'success', `✅ Consumo registrado exitosamente!`);
+                
+                // Mostrar botón para generar PDF
+                const pdfBtn = document.createElement('button');
+                pdfBtn.className = 'btn btn-warning';
+                pdfBtn.innerHTML = '📄 Generar PDF del Consumo';
+                pdfBtn.onclick = generarPDFConsumo;
+                
+                const alertElement = document.getElementById('alertBodega');
+                alertElement.appendChild(document.createElement('br'));
+                alertElement.appendChild(pdfBtn);
+                
                 limpiarFormulario();
                 document.getElementById('fechaConsumo').valueAsDate = new Date();
                 
@@ -366,6 +426,78 @@
                 btnRegistrar.disabled = false;
                 btnRegistrar.innerHTML = '✅ Registrar Consumo';
             }
+        }
+
+        function generarPDFConsumo() {
+            if (!ultimoConsumoRegistrado) {
+                alert('No hay consumo para generar PDF');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Encabezado
+            doc.setFillColor(102, 126, 234);
+            doc.rect(0, 0, 210, 40, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(20);
+            doc.text('REGISTRO DE CONSUMO - BODEGA', 105, 20, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text('Sistema de Control de Aromas', 105, 30, { align: 'center' });
+            
+            // Información del consumo
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.text('Detalles del Consumo', 20, 55);
+            
+            doc.setFontSize(11);
+            let y = 70;
+            
+            doc.text(`ID de Registro: #${ultimoConsumoRegistrado.id.toString().substring(ultimoConsumoRegistrado.id.toString().length - 6)}`, 20, y);
+            y += 10;
+            doc.text(`Fecha: ${ultimoConsumoRegistrado.fecha}`, 20, y);
+            y += 10;
+            doc.text(`Aroma: ${ultimoConsumoRegistrado.aroma}`, 20, y);
+            y += 10;
+            doc.text(`Código: ${ultimoConsumoRegistrado.codigo}`, 20, y);
+            y += 10;
+            doc.text(`Litros Consumidos: ${ultimoConsumoRegistrado.litros} L`, 20, y);
+            y += 10;
+            doc.text(`Barriles Equivalentes: ${ultimoConsumoRegistrado.barriles}`, 20, y);
+            y += 10;
+            doc.text(`Responsable Bodega: ${ultimoConsumoRegistrado.responsableBodega}`, 20, y);
+            y += 10;
+            
+            if (ultimoConsumoRegistrado.observaciones) {
+                doc.text(`Observaciones: ${ultimoConsumoRegistrado.observaciones}`, 20, y);
+                y += 10;
+            }
+            
+            y += 5;
+            doc.text(`Estado: ${ultimoConsumoRegistrado.estado}`, 20, y);
+            
+            // Información adicional
+            y += 20;
+            doc.setFillColor(240, 240, 240);
+            doc.rect(15, y, 180, 30, 'F');
+            y += 10;
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Fecha de generación: ${new Date().toLocaleString()}`, 20, y);
+            y += 7;
+            doc.text(`Este documento certifica el consumo registrado en bodega`, 20, y);
+            y += 7;
+            doc.text(`Pendiente de carga a Bsale por Administración`, 20, y);
+            
+            // Pie de página
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text('Sistema de Control de Consumo de Aromas - Gestión de Inventario', 105, 280, { align: 'center' });
+            
+            // Guardar
+            doc.save(`Consumo_${ultimoConsumoRegistrado.codigo}_${ultimoConsumoRegistrado.id.toString().substring(ultimoConsumoRegistrado.id.toString().length - 6)}.pdf`);
         }
 
         async function cargarUltimosConsumos() {
@@ -419,7 +551,7 @@
                             <td>${c.aroma}<br><small style="color:#666;">${c.codigo}</small></td>
                             <td>${c.litros} L</td>
                             <td>${c.responsableBodega}</td>
-                            <td><button class="btn btn-success btn-sm" onclick="abrirModalCompletar('${c.id}', '${c.aroma}', ${c.litros})">✅ Completar</button></td>
+                            <td><button class="btn btn-success btn-sm" onclick='abrirModalCompletar(${JSON.stringify(c)})'>✅ Completar</button></td>
                         </tr>`;
                     });
                     
@@ -434,13 +566,19 @@
             }
         }
 
-        function abrirModalCompletar(id, aroma, litros) {
+        function abrirModalCompletar(consumo) {
+            // Guardar el consumo para el PDF
+            ultimoConsumoCompletado = consumo;
+            
             const contenido = `
-                <form id="formCompletarAdmin" onsubmit="marcarComoCompletado(event, '${id}')">
+                <form id="formCompletarAdmin" onsubmit="marcarComoCompletado(event, '${consumo.id}')">
                     <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                        <p><strong>ID:</strong> #${id.toString().substring(id.toString().length - 6)}</p>
-                        <p><strong>Aroma:</strong> ${aroma}</p>
-                        <p><strong>Litros:</strong> ${litros} L</p>
+                        <p><strong>ID:</strong> #${consumo.id.toString().substring(consumo.id.toString().length - 6)}</p>
+                        <p><strong>Aroma:</strong> ${consumo.aroma}</p>
+                        <p><strong>Código:</strong> ${consumo.codigo}</p>
+                        <p><strong>Litros:</strong> ${consumo.litros} L</p>
+                        <p><strong>Responsable Bodega:</strong> ${consumo.responsableBodega}</p>
+                        ${consumo.observaciones ? `<p><strong>Observaciones:</strong> ${consumo.observaciones}</p>` : ''}
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 20px;">
@@ -469,6 +607,13 @@
             const responsableAdmin = document.getElementById('responsableAdmin').value;
             const fechaCargaBsale = document.getElementById('fechaCargaBsale').value;
             
+            // Actualizar datos para el PDF
+            if (ultimoConsumoCompletado) {
+                ultimoConsumoCompletado.responsableAdmin = responsableAdmin;
+                ultimoConsumoCompletado.fechaCargaBsale = fechaCargaBsale;
+                ultimoConsumoCompletado.estado = 'Completado';
+            }
+            
             try {
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
@@ -483,7 +628,17 @@
                 });
                 
                 cerrarModalAdmin();
-                mostrarAlerta('alertAdmin', 'success', '✅ Completado! Espera 3 segundos y actualiza');
+                mostrarAlerta('alertAdmin', 'success', '✅ Consumo marcado como completado!');
+                
+                // Mostrar botón para generar PDF
+                const pdfBtn = document.createElement('button');
+                pdfBtn.className = 'btn btn-warning';
+                pdfBtn.innerHTML = '📄 Generar PDF Completado';
+                pdfBtn.onclick = generarPDFCompletado;
+                
+                const alertElement = document.getElementById('alertAdmin');
+                alertElement.appendChild(document.createElement('br'));
+                alertElement.appendChild(pdfBtn);
                 
                 setTimeout(() => {
                     cargarConsumosPendientes();
@@ -492,6 +647,101 @@
             } catch (error) {
                 mostrarAlerta('alertAdmin', 'danger', '❌ Error: ' + error.message);
             }
+        }
+
+        function generarPDFCompletado() {
+            if (!ultimoConsumoCompletado) {
+                alert('No hay consumo completado para generar PDF');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Encabezado
+            doc.setFillColor(40, 167, 69);
+            doc.rect(0, 0, 210, 40, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(20);
+            doc.text('CONSUMO COMPLETADO - ADMINISTRACIÓN', 105, 20, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text('Sistema de Control de Aromas', 105, 30, { align: 'center' });
+            
+            // Badge de completado
+            doc.setFillColor(212, 237, 218);
+            doc.roundedRect(15, 50, 180, 15, 3, 3, 'F');
+            doc.setTextColor(21, 87, 36);
+            doc.setFontSize(14);
+            doc.text('✓ CARGADO A BSALE', 105, 60, { align: 'center' });
+            
+            // Información del consumo
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.text('Detalles del Consumo', 20, 80);
+            
+            doc.setFontSize(11);
+            let y = 95;
+            
+            doc.text(`ID de Registro: #${ultimoConsumoCompletado.id.toString().substring(ultimoConsumoCompletado.id.toString().length - 6)}`, 20, y);
+            y += 10;
+            doc.text(`Fecha de Consumo: ${ultimoConsumoCompletado.fecha}`, 20, y);
+            y += 10;
+            doc.text(`Aroma: ${ultimoConsumoCompletado.aroma}`, 20, y);
+            y += 10;
+            doc.text(`Código: ${ultimoConsumoCompletado.codigo}`, 20, y);
+            y += 10;
+            doc.text(`Litros Consumidos: ${ultimoConsumoCompletado.litros} L`, 20, y);
+            y += 10;
+            doc.text(`Barriles Equivalentes: ${ultimoConsumoCompletado.barriles}`, 20, y);
+            y += 15;
+            
+            // Responsables
+            doc.setFontSize(14);
+            doc.text('Responsables', 20, y);
+            doc.setFontSize(11);
+            y += 15;
+            
+            doc.text(`Responsable Bodega: ${ultimoConsumoCompletado.responsableBodega}`, 20, y);
+            y += 10;
+            doc.text(`Responsable Admin: ${ultimoConsumoCompletado.responsableAdmin}`, 20, y);
+            y += 10;
+            doc.text(`Fecha Carga a Bsale: ${ultimoConsumoCompletado.fechaCargaBsale}`, 20, y);
+            y += 10;
+            
+            if (ultimoConsumoCompletado.observaciones) {
+                doc.text(`Observaciones: ${ultimoConsumoCompletado.observaciones}`, 20, y);
+                y += 10;
+            }
+            
+            // Estado
+            y += 10;
+            doc.setFillColor(212, 237, 218);
+            doc.roundedRect(15, y, 180, 12, 3, 3, 'F');
+            doc.setTextColor(21, 87, 36);
+            doc.setFontSize(12);
+            doc.text(`Estado: ${ultimoConsumoCompletado.estado}`, 20, y + 8);
+            
+            // Información adicional
+            y += 30;
+            doc.setFillColor(240, 240, 240);
+            doc.rect(15, y, 180, 30, 'F');
+            y += 10;
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Fecha de generación del reporte: ${new Date().toLocaleString()}`, 20, y);
+            y += 7;
+            doc.text(`Este documento certifica que el consumo ha sido cargado exitosamente a Bsale`, 20, y);
+            y += 7;
+            doc.text(`Proceso completado por: ${ultimoConsumoCompletado.responsableAdmin}`, 20, y);
+            
+            // Pie de página
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text('Sistema de Control de Consumo de Aromas - Gestión de Inventario', 105, 280, { align: 'center' });
+            
+            // Guardar
+            doc.save(`Completado_${ultimoConsumoCompletado.codigo}_${ultimoConsumoCompletado.id.toString().substring(ultimoConsumoCompletado.id.toString().length - 6)}.pdf`);
         }
 
         function cerrarModalAdmin() {
@@ -613,11 +863,11 @@
         function mostrarAlerta(containerId, tipo, mensaje) {
             const alert = document.getElementById(containerId);
             alert.className = `alert alert-${tipo} show`;
-            alert.textContent = mensaje;
+            alert.innerHTML = mensaje;
             
             setTimeout(() => {
                 alert.classList.remove('show');
-            }, 7000);
+            }, 10000);
         }
 
         // Cerrar modal al hacer clic fuera
