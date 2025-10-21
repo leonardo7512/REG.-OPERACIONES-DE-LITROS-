@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-R">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Control Consumo Aromas</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -123,7 +123,6 @@
         </div>
 
         <div class="content">
-            <!-- PANEL BODEGA -->
             <div id="bodega" class="panel active">
                 <h2>📦 Registro de Consumo - Bodega</h2>
                 <div id="alertBodega" class="alert"></div>
@@ -184,7 +183,6 @@
                 </div>
             </div>
 
-            <!-- PANEL ADMINISTRACIÓN -->
             <div id="administracion" class="panel">
                 <h2>💼 Completar Información - Administración</h2>
                 <div id="alertAdmin" class="alert"></div>
@@ -197,7 +195,6 @@
                 </div>
             </div>
 
-            <!-- PANEL INVENTARIO -->
             <div id="inventario" class="panel">
                 <h2>📊 Estado del Inventario</h2>
                 <div id="alertInventario" class="alert"></div>
@@ -217,7 +214,6 @@
         </div>
     </div>
 
-    <!-- Modal Completar Admin -->
     <div id="modalAdmin" class="modal">
         <div class="modal-content">
             <span class="close" onclick="cerrarModalAdmin()">&times;</span>
@@ -231,25 +227,48 @@
         const STOCK_INICIAL = 200;
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxmrUvCU3TX8P1Lu8b3TG7oTuD387K3fNqZtZMLKmKt0e9Kk75ooTawETiDa7ORBtv8/exec';
         
+        // ==================== INICIO DE LA MODIFICACIÓN ====================
+        // Esta es la nueva lista de aromas que reemplaza a la anterior.
         const AROMAS_BASE = [
-            {nombre: "APPLE JACK (Manzana Canela)", codigo: "FC12001"},
-            {nombre: "BUBBLE GUM (Chicle)", codigo: "FC12010"},
-            {nombre: "CHERRY (Cereza)", codigo: "FC12002"},
-            {nombre: "GRAPE BURST (Uva)", codigo: "FC12011"},
-            {nombre: "RASPBERRY (Frambuesa)", codigo: "FC12012"},
-            {nombre: "TROPICAL FRUIT (Frutas Tropicales)", codigo: "FC12014"},
-            {nombre: "VANILLA MIST", codigo: "FC12018"},
-            {nombre: "VERRI BERRY (Frutos Rojos)", codigo: "FC12013"},
-            {nombre: "WOODLAND (Bosque)", codigo: "FC12019"},
-            {nombre: "CRANBERRY (Arandanos)", codigo: "FC12003"},
-            {nombre: "MANGO", codigo: "FC12005"},
-            {nombre: "SWEET BERRY (Bayas Dulces)", codigo: "FC12017"},
-            {nombre: "AQUALINA BEACH", codigo: "AQ001"},
-            {nombre: "VILLA CAPRI", codigo: "VC001"},
-            {nombre: "DELANO BEACH", codigo: "DB001"},
-            {nombre: "VANILLA AMBER", codigo: "VA001"},
-            {nombre: "WHITE TEA CEDAR", codigo: "WTC001"}
+            {nombre: "APPLE JACK", codigo: "FC12051"},
+            {nombre: "BUBBLE GUM", codigo: "FC12052"},
+            {nombre: "CHERRY", codigo: "FC12053"},
+            {nombre: "CONTRA COSTA GRAPE", codigo: "FC12068"},
+            {nombre: "CORONA CHERRY", codigo: "FC12082"},
+            {nombre: "CRANBERRY", codigo: "FC12067"},
+            {nombre: "CREAMY CARIBEAN", codigo: "FC12073"},
+            {nombre: "CUCUMBERMELON", codigo: "FC12079"},
+            {nombre: "EUREKA LEMON", codigo: "FC12071"},
+            {nombre: "FRESH CITRUS", codigo: "FC12094"},
+            {nombre: "FRESH LAUNDRY", codigo: "FC12077"},
+            {nombre: "FRESH LEMON", codigo: "FC12072"},
+            {nombre: "GRAPE BURST", codigo: "FC12065"},
+            {nombre: "GRAPEFRUIT", codigo: "FC12076"},
+            {nombre: "JASMINE", codigo: "FC12084"},
+            {nombre: "JASMINE", codigo: "FC12085"},
+            {nombre: "LAVENDER", codigo: "FC12091"},
+            {nombre: "LEMON", codigo: "FC12074"},
+            {nombre: "LEMON BURST", codigo: "FC12075"},
+            {nombre: "LEMON TWIST", codigo: "FC12063"},
+            {nombre: "LINEN FRESH", codigo: "FC12086"},
+            {nombre: "MANGO", codigo: "FC12054"},
+            {nombre: "MULBERRY", codigo: "FC12066"},
+            {nombre: "OCEAN BREEZE", codigo: "FC12083"},
+            {nombre: "RASPBERRY", codigo: "FC12089"},
+            {nombre: "STRAWBERRY", codigo: "FC12059"},
+            {nombre: "SUNNY DELITE", codigo: "FC12087"},
+            {nombre: "SUNNY TROPICAL", codigo: "FC12069"},
+            {nombre: "SWEEY BERRY", codigo: "FC12062"},
+            {nombre: "TROPICAL FRUIT", codigo: "FC12057"},
+            {nombre: "TROPICANA", codigo: "FC12064"},
+            {nombre: "VANILLA", codigo: "FC12058"},
+            {nombre: "VERRI BURST", codigo: "FC12088"},
+            {nombre: "VERRY BERRY", codigo: "FC12055"},
+            {nombre: "WOODLAND", codigo: "FC12056"},
+            {nombre: "ZESTY ORANGE", codigo: "FC12078"}
         ];
+        // ==================== FIN DE LA MODIFICACIÓN ====================
+
 
         let inventario = [];
         let ultimoConsumoRegistrado = null;
