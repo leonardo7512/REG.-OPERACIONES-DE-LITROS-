@@ -227,8 +227,7 @@
         const STOCK_INICIAL = 200;
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxmrUvCU3TX8P1Lu8b3TG7oTuD387K3fNqZtZMLKmKt0e9Kk75ooTawETiDa7ORBtv8/exec';
         
-        // ==================== INICIO DE LA MODIFICACIÓN ====================
-        // Esta es la nueva lista de aromas que reemplaza a la anterior.
+        // Esta es la lista de aromas actualizada
         const AROMAS_BASE = [
             {nombre: "APPLE JACK", codigo: "FC12051"},
             {nombre: "BUBBLE GUM", codigo: "FC12052"},
@@ -267,7 +266,6 @@
             {nombre: "WOODLAND", codigo: "FC12056"},
             {nombre: "ZESTY ORANGE", codigo: "FC12078"}
         ];
-        // ==================== FIN DE LA MODIFICACIÓN ====================
 
 
         let inventario = [];
@@ -824,6 +822,20 @@
                 card.className = 'aroma-card';
                 card.style.background = colorFondo;
                 
+                // ==================== INICIO DE LA CORRECCIÓN ====================
+                // Lógica mejorada para Consumo/Añadido
+                const movimientoNeto = STOCK_INICIAL - aroma.stock;
+                let etiquetaMovimiento = "Consumido:";
+                let valorMovimiento = (movimientoNeto).toFixed(1);
+                let colorMovimiento = "#dc3545"; // Rojo para consumo
+
+                if (movimientoNeto < 0) {
+                    etiquetaMovimiento = "Añadido (sobre inicial):";
+                    valorMovimiento = (Math.abs(movimientoNeto)).toFixed(1); // Muestra el número positivo
+                    colorMovimiento = "#28a745"; // Verde para añadido
+                }
+                // Fin de la lógica
+
                 card.innerHTML = `
                     <h3 style="color: ${porcentaje > 10 ? '#667eea' : '#d32f2f'};">${aroma.nombre}</h3>
                     <div class="code">Código: ${aroma.codigo}</div>
@@ -840,7 +852,7 @@
                     
                     <div class="stock-info" style="margin-top: 15px;">
                         <div class="stock-info-item">
-                            <span class="stock-info-label">Stock inicial:</span>
+                            <span class="stock-info-label">Stock inicial (base):</span>
                             <span class="stock-info-value">${STOCK_INICIAL} L</span>
                         </div>
                         <div class="stock-info-item">
@@ -848,8 +860,8 @@
                             <span class="stock-info-value">${aroma.stock.toFixed(1)} L</span>
                         </div>
                         <div class="stock-info-item">
-                            <span class="stock-info-label">Consumido:</span>
-                            <span class="stock-info-value">${(STOCK_INICIAL - aroma.stock).toFixed(1)} L</span>
+                            <span class="stock-info-label">${etiquetaMovimiento}</span>
+                            <span class="stock-info-value" style="color: ${colorMovimiento}; font-weight: bold;">${valorMovimiento} L</span>
                         </div>
                         <div class="stock-info-item">
                             <span class="stock-info-label">Barriles restantes:</span>
@@ -868,6 +880,8 @@
                         📊 Ver Hoja Individual
                     </a>
                 `;
+                // ==================== FIN DE LA CORRECCIÓN ====================
+
                 container.appendChild(card);
             });
         }
