@@ -823,18 +823,8 @@
                 card.style.background = colorFondo;
                 
                 // ==================== INICIO DE LA CORRECCIÓN ====================
-                // Lógica mejorada para Consumo/Añadido
-                const movimientoNeto = STOCK_INICIAL - aroma.stock;
-                let etiquetaMovimiento = "Consumido:";
-                let valorMovimiento = (movimientoNeto).toFixed(1);
-                let colorMovimiento = "#dc3545"; // Rojo para consumo
-
-                if (movimientoNeto < 0) {
-                    etiquetaMovimiento = "Añadido (sobre inicial):";
-                    valorMovimiento = (Math.abs(movimientoNeto)).toFixed(1); // Muestra el número positivo
-                    colorMovimiento = "#28a745"; // Verde para añadido
-                }
-                // Fin de la lógica
+                // Se eliminó la lógica confusa de "Consumido" / "Añadido".
+                // Ahora solo muestra los hechos: Stock Base, Stock Actual, Barriles y Porcentaje.
 
                 card.innerHTML = `
                     <h3 style="color: ${porcentaje > 10 ? '#667eea' : '#d32f2f'};">${aroma.nombre}</h3>
@@ -858,10 +848,6 @@
                         <div class="stock-info-item">
                             <span class="stock-info-label">Stock actual:</span>
                             <span class="stock-info-value">${aroma.stock.toFixed(1)} L</span>
-                        </div>
-                        <div class="stock-info-item">
-                            <span class="stock-info-label">${etiquetaMovimiento}</span>
-                            <span class="stock-info-value" style="color: ${colorMovimiento}; font-weight: bold;">${valorMovimiento} L</span>
                         </div>
                         <div class="stock-info-item">
                             <span class="stock-info-label">Barriles restantes:</span>
